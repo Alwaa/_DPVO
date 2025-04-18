@@ -19,11 +19,11 @@ Id = SE3.Identity(1, device="cuda")
 
 class DPVO:
 
-    def __init__(self, cfg, network, ht=480, wd=640, viz=False):
+    def __init__(self, cfg, network, ht=480, wd=640, viz=False, timing = False):
         self.cfg = cfg
         self.load_weights(network)
         self.is_initialized = False
-        self.enable_timing = False
+        self.enable_timing = timing
         torch.set_num_threads(2)
 
         self.M = self.cfg.PATCHES_PER_FRAME

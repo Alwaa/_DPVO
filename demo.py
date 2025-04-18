@@ -43,7 +43,7 @@ def run(cfg, network, imagedir, calib, stride=1, skip=0, viz=False, timeit=False
 
         if slam is None:
             _, H, W = image.shape
-            slam = DPVO(cfg, network, ht=H, wd=W, viz=viz)
+            slam = DPVO(cfg, network, ht=H, wd=W, viz=viz, timing=timeit)
 
         with Timer("SLAM", enabled=timeit):
             slam(t, image, intrinsics)
