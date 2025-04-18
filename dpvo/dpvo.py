@@ -326,18 +326,21 @@ class DPVO:
         self.ran_global_ba[self.n] = True
 
     def update(self):
-        with Timer("other", enabled=self.enable_timing):
+        with Timer("ReProj", enabled=self.enable_timing):
             coords = self.reproject()
 
-            with autocast(enabled=True):
+        with autocast(enabled=True):
+            with Timer("Corr&Ctx", enabled=self.enable_timing):
                 corr = self.corr(coords)
                 ctx = self.imap[:, self.pg.kk % (self.M * self.pmem)]
+            with Timer("NetUpdate", enabled=self.enable_timing):
                 self.pg.net, (delta, weight, _) = \
                     self.network.update(self.pg.net, ctx, corr, None, self.pg.ii, self.pg.jj, self.pg.kk)
 
-            lmbda = torch.as_tensor([1e-4], device="cuda")
-            weight = weight.float()
-            target = coords[...,self.P//2,self.P//2] + delta.float()
+            with Timer("AddTarget", enabled=self.enable_timing):
+                lmbda = torch.as_tensor([1e-4], device="cuda")
+                weight = weight.float()
+                target = coords[...,self.P//2,self.P//2] + delta.float()
 
         self.pg.target = target
         self.pg.weight = weight
@@ -346,12 +349,15 @@ class DPVO:
             try:
                 # run global bundle adjustment if there exist long-range edges
                 if (self.pg.ii < self.n - self.cfg.REMOVAL_WINDOW - 1).any() and not self.ran_global_ba[self.n]:
-                    self.__run_global_BA()
+                    with Timer("BA_global", enabled=self.enable_timing):
+                        self.__run_global_BA()
                 else:
-                    t0 = self.n - self.cfg.OPTIMIZATION_WINDOW if self.is_initialized else 1
-                    t0 = max(t0, 1)
-                    fastba.BA(self.poses, self.patches, self.intrinsics, 
-                        target, weight, lmbda, self.pg.ii, self.pg.jj, self.pg.kk, t0, self.n, M=self.M, iterations=2, eff_impl=False)
+                    with Timer("BA_local", enabled=self.enable_timing):
+                        t0 = self.n - self.cfg.OPTIMIZATION_WINDOW if self.is_initialized else 1
+                        t0 = max(t0, 1)
+                        fastba.BA(self.poses, self.patches, self.intrinsics, 
+                            target, weight, lmbda, self.pg.ii, self.pg.jj, self.pg.kk,
+                            t0, self.n, M=self.M, iterations=2, eff_impl=False)
             except:
                 print("Warning BA failed...")
 

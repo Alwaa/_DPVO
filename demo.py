@@ -12,7 +12,7 @@ from dpvo.config import cfg
 from dpvo.dpvo import DPVO
 from dpvo.plot_utils import plot_trajectory, save_output_for_COLMAP, save_ply
 from dpvo.stream import image_stream, video_stream
-from dpvo.utils import Timer
+from dpvo.utils import Timer, print_timing_summary
 
 SKIP = 0
 
@@ -97,6 +97,9 @@ if __name__ == '__main__':
     if args.plot:
         Path("trajectory_plots").mkdir(exist_ok=True)
         plot_trajectory(trajectory, title=f"DPVO Trajectory Prediction for {args.name}", filename=f"trajectory_plots/{args.name}.pdf")
+    
+    if args.timeit:
+        print_timing_summary()
 
 
         

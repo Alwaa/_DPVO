@@ -1,9 +1,11 @@
+from collections import defaultdict
 from contextlib import ContextDecorator
 import torch
 import torch.nn.functional as F
 
 
-all_times = []
+
+all_times: dict[str, list] = defaultdict(list)
 
 class Timer(ContextDecorator):
     def __init__(self, name, enabled=True):
@@ -25,9 +27,17 @@ class Timer(ContextDecorator):
             torch.cuda.synchronize()
 
             elapsed = self.start.elapsed_time(self.end)
-            all_times.append(elapsed)
+            all_times[self.name].append(elapsed)
             print(f"{self.name} {elapsed:.03f}")
 
+def print_timing_summary():
+    global all_times
+    print("\n=== timing summary ===")
+    for name, lst in all_times.items():
+        total = sum(lst)
+        count = len(lst)
+        avg   = total/count
+        print(f"{name:15s}  total {total:7.3f} ms   {count:3d} runs   avg {avg:7.3f} ms")
 
 def coords_grid(b, n, h, w, **kwargs):
     """ coordinate grid """
