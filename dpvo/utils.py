@@ -28,16 +28,44 @@ class Timer(ContextDecorator):
 
             elapsed = self.start.elapsed_time(self.end)
             all_times[self.name].append(elapsed)
-            print(f"{self.name} {elapsed:.03f}")
+            #print(f"{self.name} {elapsed:.03f}")
+
+class _Node:
+    """A node in the timing tree."""
+    __slots__ = ("self_times", "children")
+    def __init__(self):
+        self.self_times = []
+        self.children   = defaultdict(_Node)
+
+    def extend(self, parts, values):
+        if not parts:
+            self.self_times.extend(values)
+        else:
+            self.children[parts[0]].extend(parts[1:], values)
+
 
 def print_timing_summary():
     global all_times
+
+    root = _Node()
+    for fullname, lst in all_times.items():
+        root.extend(fullname.split('.'), lst)
+
+    def _print_exclusive(node, name="", indent=0):
+        if name:
+            pad   = "    " * indent
+            total = sum(node.self_times)
+            count = len(node.self_times)
+            avg   = total/count if count else 0.0
+            print(f"{pad}{name:<15s} total {total:.3f} ms   "
+                f"{count} runs   avg {avg:.3f} ms")
+            
+        for child_name, child in node.children.items():
+            _print_exclusive(child, child_name, indent + 1)
+
+
     print("\n=== timing summary ===")
-    for name, lst in all_times.items():
-        total = sum(lst)
-        count = len(lst)
-        avg   = total/count
-        print(f"{name:15s}  total {total:7.3f} ms   {count:3d} runs   avg {avg:7.3f} ms")
+    _print_exclusive(root)
 
 def coords_grid(b, n, h, w, **kwargs):
     """ coordinate grid """

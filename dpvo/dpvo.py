@@ -326,18 +326,18 @@ class DPVO:
         self.ran_global_ba[self.n] = True
 
     def update(self):
-        with Timer("ReProj", enabled=self.enable_timing):
+        with Timer("SLAM.ReProj", enabled=self.enable_timing):
             coords = self.reproject()
 
         with autocast(enabled=True):
-            with Timer("Corr&Ctx", enabled=self.enable_timing):
+            with Timer("SLAM.Corr&Ctx", enabled=self.enable_timing):
                 corr = self.corr(coords)
                 ctx = self.imap[:, self.pg.kk % (self.M * self.pmem)]
-            with Timer("NetUpdate", enabled=self.enable_timing):
+            with Timer("SLAM.NetUpdate", enabled=self.enable_timing):
                 self.pg.net, (delta, weight, _) = \
                     self.network.update(self.pg.net, ctx, corr, None, self.pg.ii, self.pg.jj, self.pg.kk)
 
-            with Timer("AddTarget", enabled=self.enable_timing):
+            with Timer("SLAM.AddTarget", enabled=self.enable_timing):
                 lmbda = torch.as_tensor([1e-4], device="cuda")
                 weight = weight.float()
                 target = coords[...,self.P//2,self.P//2] + delta.float()
@@ -345,14 +345,14 @@ class DPVO:
         self.pg.target = target
         self.pg.weight = weight
 
-        with Timer("BA", enabled=self.enable_timing):
+        with Timer("SLAM.BA", enabled=self.enable_timing):
             try:
                 # run global bundle adjustment if there exist long-range edges
                 if (self.pg.ii < self.n - self.cfg.REMOVAL_WINDOW - 1).any() and not self.ran_global_ba[self.n]:
-                    with Timer("BA_global", enabled=self.enable_timing):
+                    with Timer("SLAM.BA.Global", enabled=self.enable_timing):
                         self.__run_global_BA()
                 else:
-                    with Timer("BA_local", enabled=self.enable_timing):
+                    with Timer("SLAM.BA.Local", enabled=self.enable_timing):
                         t0 = self.n - self.cfg.OPTIMIZATION_WINDOW if self.is_initialized else 1
                         t0 = max(t0, 1)
                         fastba.BA(self.poses, self.patches, self.intrinsics, 
